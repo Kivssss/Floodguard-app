@@ -153,14 +153,20 @@ DB_FILE = os.path.join(BASE_DIR, "floodguard.db")
 DEFAULT_SQLITE_URL = f"sqlite:///{DB_FILE}"
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or DEFAULT_SQLITE_URL
 
-# Fix legacy postgres:// URI schemas provided by cloud platforms (Render, Heroku, etc.)
+# Support PostgreSQL (psycopg2 / psycopg) and SQLite
 if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://") and not SQLALCHEMY_DATABASE_URL.startswith("postgresql+"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+    try:
+        engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+    except Exception as e:
+        print(f"Warning: PostgreSQL create_engine failed ({e}), falling back to SQLite.")
+        engine = create_engine(DEFAULT_SQLITE_URL, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -235,7 +241,10 @@ class FloodReport(Base):
     reporterUsername = Column(String, default="anonymous")
     reporterName = Column(String, default="")
 
-Base.metadata.create_all(engine)
+try:
+    Base.metadata.create_all(engine)
+except Exception as e:
+    print(f"Warning: Base.metadata.create_all failed ({e})")
 
 # --- PYDANTIC SCHEMAS ---
 class UserRegister(BaseModel):
