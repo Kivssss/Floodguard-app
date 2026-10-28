@@ -40,9 +40,11 @@ object GeminiPhotoVerifier {
 
     // Primary and fallback models tested and verified active on Google AI Studio
     private val MODELS = listOf(
-        "gemini-3.5-flash-lite",
-        "gemini-3.5-flash",
-        "gemini-3.8-flash"
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
+        "gemini-2.5-flash",
+        "gemini-3.5-flash-lite"
     )
 
     private const val VERIFICATION_PROMPT =

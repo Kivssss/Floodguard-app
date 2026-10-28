@@ -1,6 +1,7 @@
 package com.example.floodguard
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -10,6 +11,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.core.content.ContextCompat
 
 /**
  * Activity for displaying real-time community flood alerts,
@@ -21,12 +23,20 @@ class AlertsActivity : ComponentActivity() {
     private lateinit var callHotlineButton: LinearLayout
     private lateinit var addReportButton: TextView
 
+    private var currentFilter = "ALL"
+    private lateinit var chipFilterAll: TextView
+    private lateinit var chipFilterImpassable: TextView
+    private lateinit var chipFilterHeavyOnly: TextView
+    private lateinit var chipFilterCleared: TextView
+    private lateinit var chipFilterMine: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_alerts)
 
         initViews()
         setupListeners()
+        setupFilterChips()
         populateAlerts()
         setupBottomNavigation()
     }
@@ -51,6 +61,41 @@ class AlertsActivity : ComponentActivity() {
         alertsContainer = findViewById(R.id.alertsContainer)
         callHotlineButton = findViewById(R.id.callHotlineButton)
         addReportButton = findViewById(R.id.addReportButton)
+
+        chipFilterAll = findViewById(R.id.chipFilterAll)
+        chipFilterImpassable = findViewById(R.id.chipFilterImpassable)
+        chipFilterHeavyOnly = findViewById(R.id.chipFilterHeavyOnly)
+        chipFilterCleared = findViewById(R.id.chipFilterCleared)
+        chipFilterMine = findViewById(R.id.chipFilterMine)
+    }
+
+    private fun setupFilterChips() {
+        val chips = listOf(
+            chipFilterAll to "ALL",
+            chipFilterImpassable to "IMPASSABLE",
+            chipFilterHeavyOnly to "HEAVY_ONLY",
+            chipFilterCleared to "CLEARED",
+            chipFilterMine to "MINE"
+        )
+        for ((chip, filterKey) in chips) {
+            chip.setOnClickListener {
+                currentFilter = filterKey
+                updateChipStyles(chips)
+                populateAlerts()
+            }
+        }
+    }
+
+    private fun updateChipStyles(chips: List<Pair<TextView, String>>) {
+        for ((chip, filterKey) in chips) {
+            if (filterKey == currentFilter) {
+                chip.setBackgroundResource(R.drawable.btn_severity_selected)
+                chip.setTextColor(Color.WHITE)
+            } else {
+                chip.setBackgroundResource(R.drawable.btn_severity_default)
+                chip.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -88,14 +133,45 @@ class AlertsActivity : ComponentActivity() {
         val allReports = ReportRepository.loadReports(this) {
             runOnUiThread { populateAlerts() }
         }.toList()
-        val reportsList = allReports
+
+        val reportsList = when (currentFilter) {
+            "IMPASSABLE" -> allReports.filter {
+                it.severityLevel == SeverityLevel.NOT_PASSABLE ||
+                    it.severity.contains("Impassable", ignoreCase = true) ||
+                    it.severity.contains("Waist", ignoreCase = true)
+            }
+            "HEAVY_ONLY" -> allReports.filter {
+                it.severityLevel == SeverityLevel.HEAVY_VEHICLES_ONLY ||
+                    it.severity.contains("Knee", ignoreCase = true)
+            }
+            "CLEARED" -> allReports.filter {
+                it.severityLevel == SeverityLevel.CLEARED ||
+                    it.severity.contains("Cleared", ignoreCase = true) ||
+                    it.severity.contains("Ankle", ignoreCase = true)
+            }
+            "MINE" -> allReports.filter {
+                it.isAuthoredBy(currentUsername, currentFullName)
+            }
+            else -> allReports
+        }
 
         val count = reportsList.size
-        findViewById<TextView>(R.id.tvAlertsHeaderTitle)?.text = "Submitted Flood Alerts ($count)"
+        val filterLabel = when (currentFilter) {
+            "IMPASSABLE" -> "Impassable Alerts"
+            "HEAVY_ONLY" -> "Heavy Vehicles Only"
+            "CLEARED" -> "Cleared Reports"
+            "MINE" -> "My Reports"
+            else -> "Submitted Flood Alerts"
+        }
+        findViewById<TextView>(R.id.tvAlertsHeaderTitle)?.text = "$filterLabel ($count)"
 
         if (reportsList.isEmpty()) {
             val emptyText = TextView(this).apply {
-                text = "No community flood alerts at this moment."
+                text = if (currentFilter == "ALL") {
+                    "No community flood alerts at this moment."
+                } else {
+                    "No flood alerts matching this filter category."
+                }
                 setTextColor(resources.getColor(android.R.color.darker_gray, theme))
                 textSize = 13f
                 setPadding(12, 12, 12, 12)

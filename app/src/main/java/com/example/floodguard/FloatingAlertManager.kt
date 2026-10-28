@@ -202,7 +202,11 @@ object FloatingAlertManager {
                 CHANNEL_ID,
                 "Flood alerts",
                 NotificationManager.IMPORTANCE_HIGH,
-            )
+            ).apply {
+                description = "Emergency community flood warning broadcasts and hazard alerts"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 350, 200, 350)
+            }
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
 
@@ -226,6 +230,8 @@ object FloatingAlertManager {
             .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVibrate(longArrayOf(0, 350, 200, 350))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 

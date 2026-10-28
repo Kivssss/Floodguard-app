@@ -265,22 +265,24 @@ class MapActivity : ComponentActivity() {
                             var minutesAgo = Math.max(0, Math.round((now - (latest.timestamp || now)) / 60000));
                             var timeAgoText = minutesAgo < 1 ? "Just now" : (minutesAgo < 60 ? minutesAgo + "m ago" : Math.round(minutesAgo/60) + "h ago");
 
-                            var popupHtml = "<b>🚨 " + cluster.location + "</b><br>";
-                            popupHtml += "<b>Latest Status:</b> " + latest.waterDepth + " <span style='font-size:11px;color:#64748B;'>(" + timeAgoText + ")</span><br>";
-                            popupHtml += "<b>Reports:</b> " + count + " active report(s)<br>";
+                            var popupHtml = "<div style='min-width:180px;font-family:sans-serif;line-height:1.4;'>";
+                            popupHtml += "<div style='font-size:13px;font-weight:700;color:#0F172A;'>🚨 " + cluster.location + "</div>";
+                            popupHtml += "<div style='margin-top:4px;'><span style='background:" + circleColor + ";color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;'>" + latest.waterDepth + "</span> ";
+                            popupHtml += "<span style='font-size:11px;color:#64748B;'>(" + timeAgoText + " • " + count + " reports)</span></div>";
 
                             if (hasConflict) {
-                                popupHtml += "<div style='background:#FEF2F2;border-left:3px solid #DC2626;padding:4px 6px;margin:5px 0;font-size:11px;color:#991B1B;'>" +
+                                popupHtml += "<div style='background:#FEF2F2;border-left:3px solid #DC2626;padding:4px 6px;margin:6px 0;font-size:11px;color:#991B1B;border-radius:3px;'>" +
                                     "⚠️ <b>Safety Notice (Mixed Reports):</b><br>" +
                                     "Highest severity reported: <b>" + maxReport.waterDepth + "</b>.<br>" +
                                     "Latest update: <i>" + latest.waterDepth + "</i>. Exercise extreme caution!" +
                                     "</div>";
                             }
 
-                            popupHtml += "<span style='color:#0284C7;font-size:11px;font-weight:600;'>● Active Flood Zone (Last 24h)</span><br>";
+                            popupHtml += "<div style='margin-top:6px;color:#0284C7;font-size:11px;font-weight:600;'>● Active Hazard Zone (Last 24h)</div>";
                             if (latest.notes) {
-                                popupHtml += "<small style='color:#334155;'>" + latest.notes + "</small>";
+                                popupHtml += "<div style='margin-top:4px;font-size:11px;color:#475569;background:#F1F5F9;padding:4px 6px;border-radius:4px;'>" + latest.notes + "</div>";
                             }
+                            popupHtml += "</div>";
 
                             circle.bindPopup(popupHtml);
                         }

@@ -27,7 +27,15 @@ import base64
 
 _ENCODED_GEMINI_KEY = "QVEuQWI4Uk42S3hsamtGSW9Rd09ibDBValc2MjZJV0RwclE0a0VxRjR3RURldkMxNWxZbnc="
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or base64.b64decode(_ENCODED_GEMINI_KEY).decode("utf-8")
-GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]
+GEMINI_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash"
+]
 _VERIFIED_PHOTO_CACHE = {}
 
 def verify_flood_photo_with_gemini(photo_uri: str) -> dict:
@@ -126,13 +134,34 @@ def verify_flood_photo_with_gemini(photo_uri: str) -> dict:
     }
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="FloodGuard Backend", version="2.0.0")
 
-# SQLite Database setup
+# Enable CORS for web dashboards, remote clients, and hybrid webviews
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database setup: SQLite fallback with automatic PostgreSQL / Cloud DB support via DATABASE_URL
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "floodguard.db")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_FILE}"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+DEFAULT_SQLITE_URL = f"sqlite:///{DB_FILE}"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or DEFAULT_SQLITE_URL
+
+# Fix legacy postgres:// URI schemas provided by cloud platforms (Render, Heroku, etc.)
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

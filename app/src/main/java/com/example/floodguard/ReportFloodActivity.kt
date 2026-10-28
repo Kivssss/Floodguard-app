@@ -600,7 +600,36 @@ class ReportFloodActivity : ComponentActivity() {
 
     private fun setupPhotoPicker() {
         photoPickerBox.setOnClickListener {
-            selectImageLauncher.launch("image/*")
+            if (selectedImageUri != null) {
+                val options = arrayOf(
+                    "🔍 View Fullscreen Preview",
+                    "📷 Change / Select Another Photo",
+                    "❌ Remove Photo"
+                )
+                AlertDialog.Builder(this)
+                    .setTitle("Flood Photo")
+                    .setItems(options) { _, which ->
+                        when (which) {
+                            0 -> {
+                                val uriStr = selectedImageUri?.toString() ?: persistedPhotoData.orEmpty()
+                                val loc = locationInput.text.toString().ifBlank { "Selected Flood Photo" }
+                                ReportPhotoHelper.showFloodPhotoDialog(this, uriStr, loc)
+                            }
+                            1 -> selectImageLauncher.launch("image/*")
+                            2 -> {
+                                selectedImageUri = null
+                                persistedPhotoData = null
+                                photoPreview.setImageDrawable(null)
+                                photoPreview.visibility = View.GONE
+                                tvPhotoBadge.visibility = View.GONE
+                                photoPlaceholder.visibility = View.VISIBLE
+                            }
+                        }
+                    }
+                    .show()
+            } else {
+                selectImageLauncher.launch("image/*")
+            }
         }
     }
 
